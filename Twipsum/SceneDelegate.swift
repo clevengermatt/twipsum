@@ -12,12 +12,47 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+             
+        window = UIWindow(windowScene: windowScene)
+        
+        let storyboard = UIStoryboard(name: "LaunchScreen", bundle: nil)
+        let launchScreen = storyboard.instantiateViewController(withIdentifier: "LaunchScreen")
+        window?.rootViewController = launchScreen
+        window?.makeKeyAndVisible()
+        
+        // Extend the launch screen until posts have been fetched from the server
+        APIClient.shared.fetchPosts { (result) in
+            switch result {
+            case .success(let posts):
+                // Update the posts cache
+                Cache.shared.posts = posts
+                
+                let rootViewController = PostsTableViewController(withPosts: posts)
+                rootViewController.title = "Twipsum"
+                let navigationController = UINavigationController(rootViewController: rootViewController)
+                self.window?.rootViewController = navigationController
+                
+                guard let window = self.window else { return }
+                UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve, animations: nil, completion: nil)
+                
+            case .failure(_):
+                
+                let alertController = UIAlertController(title: "Server Unavailable", message: "The server has been available throughout multiple connection attempts. Please visit Twipsum again later.", preferredStyle: .alert)
+                
+                let okAction = UIAlertAction(title: "OK", style: .default) { (_) in
+                    alertController.dismiss(animated: true)
+                }
+                
+                alertController.addAction(okAction)
+                
+                launchScreen.present(alertController, animated: true)
+            }
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -47,7 +82,4 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Use this method to save data, release shared resources, and store enough scene-specific state information
         // to restore the scene back to its current state.
     }
-
-
 }
-
